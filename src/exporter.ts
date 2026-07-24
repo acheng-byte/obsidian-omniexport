@@ -6,7 +6,7 @@
 import type { OmniExportSettings } from "./settings";
 import { t, type Lang } from "./i18n";
 
-export const PLUGIN_VERSION = "0.1.1";
+export const PLUGIN_VERSION = "0.1.2";
 
 export type Theme = "default" | "gongwen" | "report" | "presentation" | "engineering" | "sales";
 
@@ -37,7 +37,7 @@ export function generateSingleFileHTML(options: ExportOptions): string {
 	const interactiveCSS = settings.interactive ? getInteractiveCSS(isDark) : "";
 
 	return `<!DOCTYPE html>
-<html lang="${lang === "zh" ? "zh-CN" : "en"}" data-theme="${isDark ? "dark" : "light"}">
+<html lang="${lang === "zh" ? "zh-CN" : "en"}" data-theme="${isDark ? "dark" : "light"}" data-export-theme="${theme}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
@@ -48,6 +48,7 @@ export function generateSingleFileHTML(options: ExportOptions): string {
 ${seoTags}
 <style>
 ${getBaseCSS(isDark, theme)}
+${getAllThemeVariablesCSS()}
 ${themeCSS}
 ${interactiveCSS}
 </style>
@@ -166,6 +167,31 @@ article.note-content .task-list-item input { margin-right: 8px; }
 `;
 }
 
+/* ========== 全主题 CSS 变量（支持运行时切换 + 暗色模式） ========== */
+
+function getAllThemeVariablesCSS(): string {
+	return `
+/* --- Default light --- */
+html[data-export-theme="default"] { --accent: #89b4fa; --link: #1e6ddc; }
+html[data-export-theme="default"][data-theme="dark"] { --accent: #89b4fa; --link: #89b4fa; }
+/* --- 公文 --- */
+html[data-export-theme="gongwen"] { --accent: #ff0000; --link: #1e6ddc; }
+html[data-export-theme="gongwen"][data-theme="dark"] { --accent: #ff4444; --link: #89b4fa; }
+/* --- 报告 --- */
+html[data-export-theme="report"] { --accent: #89b4fa; --link: #1e6ddc; }
+html[data-export-theme="report"][data-theme="dark"] { --accent: #89b4fa; --link: #89b4fa; }
+/* --- 演示 --- */
+html[data-export-theme="presentation"] { --accent: #89b4fa; --link: #1e6ddc; }
+html[data-export-theme="presentation"][data-theme="dark"] { --accent: #b4befe; --link: #89b4fa; }
+/* --- 工程 --- */
+html[data-export-theme="engineering"] { --accent: #2563eb; --link: #2563eb; }
+html[data-export-theme="engineering"][data-theme="dark"] { --accent: #60a5fa; --link: #60a5fa; }
+/* --- 销售 --- */
+html[data-export-theme="sales"] { --accent: #059669; --link: #059669; }
+html[data-export-theme="sales"][data-theme="dark"] { --accent: #34d399; --link: #34d399; }
+`;
+}
+
 /* ========== 主题 CSS ========== */
 
 function getThemeCSS(theme: Theme, isDark: boolean): string {
@@ -186,58 +212,60 @@ function getGongwenCSS(): string {
 @media print {
 	@page { size: A4; margin: 37mm 26mm 35mm 28mm; }
 }
-body { font-family: "FangSong", "仿宋", "STFangsong", serif; font-size: 16pt; line-height: 28.99pt; }
-article.note-content h1 {
+html[data-export-theme="gongwen"] { --font: "FangSong", "仿宋", "STFangsong", serif; }
+html[data-export-theme="gongwen"] body { font-family: "FangSong", "仿宋", "STFangsong", serif; font-size: 16pt; line-height: 28.99pt; }
+html[data-export-theme="gongwen"] article.note-content h1 {
 	font-family: "SimSun", "宋体", serif;
 	font-size: 22pt; font-weight: normal;
 	text-align: center; border-bottom: none;
-	color: #000; margin: 2em 0 1em;
+	margin: 2em 0 1em;
 }
-article.note-content h2 {
+html[data-export-theme="gongwen"] article.note-content h2 {
 	font-family: "SimHei", "黑体", sans-serif;
 	font-size: 16pt; font-weight: normal;
 }
-article.note-content h3 {
+html[data-export-theme="gongwen"] article.note-content h3 {
 	font-family: "KaiTi", "楷体", "STKaiti", serif;
 	font-size: 16pt; font-weight: normal;
 }
-article.note-content h4, article.note-content h5, article.note-content h6 {
+html[data-export-theme="gongwen"] article.note-content h4,
+html[data-export-theme="gongwen"] article.note-content h5,
+html[data-export-theme="gongwen"] article.note-content h6 {
 	font-family: "FangSong", "仿宋", serif;
 	font-size: 16pt; font-weight: normal;
 }
-article.note-content p { text-align: justify; text-indent: 2em; }
-article.note-content blockquote { border-left-color: #ff0000; }
-article.note-content blockquote p { text-indent: 0; }
+html[data-export-theme="gongwen"] article.note-content p { text-align: justify; text-indent: 2em; }
+html[data-export-theme="gongwen"] article.note-content blockquote p { text-indent: 0; }
 /* 公文红线 */
-article.note-content h1::after {
+html[data-export-theme="gongwen"] article.note-content h1::after {
 	content: "";
 	display: block;
 	width: 100%;
 	height: 0;
-	border-bottom: 3px solid #ff0000;
+	border-bottom: 3px solid var(--accent);
 	margin-top: 0.5em;
 }
-article.note-content table { font-size: 14pt; }
-article.note-content th, article.note-content td { font-family: "FangSong", "仿宋", serif; }
+html[data-export-theme="gongwen"] article.note-content table { font-size: 14pt; }
+html[data-export-theme="gongwen"] article.note-content th,
+html[data-export-theme="gongwen"] article.note-content td { font-family: "FangSong", "仿宋", serif; }
 `;
 }
 
 /** 报告主题 */
 function getReportCSS(): string {
 	return `
-/* 报告主题 */
-article.note-content h1 {
+html[data-export-theme="report"] article.note-content h1 {
 	text-align: center; font-size: 2rem;
 	border-bottom: 3px double var(--border);
 	padding-bottom: 0.5em; margin-bottom: 1em;
 }
-article.note-content h2 {
+html[data-export-theme="report"] article.note-content h2 {
 	border-left: 4px solid var(--accent);
 	padding-left: 12px; border-bottom: none;
 }
-article.note-content table { font-size: 0.95rem; }
-article.note-content th { background: var(--accent); color: #fff; }
-article.note-content blockquote {
+html[data-export-theme="report"] article.note-content table { font-size: 0.95rem; }
+html[data-export-theme="report"] article.note-content th { background: var(--accent); color: #fff; }
+html[data-export-theme="report"] article.note-content blockquote {
 	background: var(--code-bg);
 	border-left: none;
 	border-radius: 8px;
@@ -249,43 +277,42 @@ article.note-content blockquote {
 /** 演示主题 */
 function getPresentationCSS(): string {
 	return `
-/* 演示主题 */
-body { font-size: 18px; line-height: 2; }
-article.note-content h1 {
+html[data-export-theme="presentation"] { --max-width: 960px; }
+html[data-export-theme="presentation"] body { font-size: 18px; line-height: 2; }
+html[data-export-theme="presentation"] article.note-content h1 {
 	font-size: 2.5rem; text-align: center;
 	border-bottom: none;
 	background: linear-gradient(135deg, var(--accent), #b4befe);
 	-webkit-background-clip: text; -webkit-text-fill-color: transparent;
 	background-clip: text;
 }
-article.note-content h2 { font-size: 1.8rem; color: var(--accent); }
-article.note-content h3 { font-size: 1.4rem; }
-article.note-content p { font-size: 1.1rem; line-height: 2; }
-article.note-content li { font-size: 1.1rem; line-height: 2; }
-article.note-content blockquote {
+html[data-export-theme="presentation"] article.note-content h2 { font-size: 1.8rem; color: var(--accent); }
+html[data-export-theme="presentation"] article.note-content h3 { font-size: 1.4rem; }
+html[data-export-theme="presentation"] article.note-content p { font-size: 1.1rem; line-height: 2; }
+html[data-export-theme="presentation"] article.note-content li { font-size: 1.1rem; line-height: 2; }
+html[data-export-theme="presentation"] article.note-content blockquote {
 	font-size: 1.2rem; font-style: italic;
 	border-left-width: 6px;
 }
-article.note-content img { border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
-article.note-content pre { border-radius: 12px; font-size: 1rem; }
-article.note-content table { border-radius: 8px; overflow: hidden; }
-article.note-content th { background: var(--accent); color: #fff; }
+html[data-export-theme="presentation"] article.note-content img { border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+html[data-export-theme="presentation"] article.note-content pre { border-radius: 12px; font-size: 1rem; }
+html[data-export-theme="presentation"] article.note-content table { border-radius: 8px; overflow: hidden; }
+html[data-export-theme="presentation"] article.note-content th { background: var(--accent); color: #fff; }
 `;
 }
 
 /** 工程报表主题 */
 function getEngineeringCSS(): string {
 	return `
-:root { --accent: #2563eb; }
-article.note-content h1 { text-align: center; font-size: 1.6rem; border-bottom: 3px solid #2563eb; padding-bottom: 0.5em; color: #1e3a5f; }
-article.note-content h2 { font-size: 1.3rem; color: #1e3a5f; border-left: 5px solid #2563eb; padding-left: 12px; }
-article.note-content h3 { font-size: 1.1rem; color: #2563eb; }
-article.note-content table { font-size: 0.9rem; border: 2px solid #2563eb; }
-article.note-content th { background: #2563eb; color: #fff; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
-article.note-content tr:nth-child(even) { background: #f0f4ff; }
-article.note-content tr:hover { background: #e0e8ff; }
-article.note-content blockquote { border-left-color: #2563eb; background: #f0f4ff; padding: 12px 16px; border-radius: 0 8px 8px 0; }
-article.note-content code { background: #e8efff; color: #1e3a5f; }
+html[data-export-theme="engineering"] article.note-content h1 { text-align: center; font-size: 1.6rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.5em; }
+html[data-export-theme="engineering"] article.note-content h2 { font-size: 1.3rem; border-left: 5px solid var(--accent); padding-left: 12px; }
+html[data-export-theme="engineering"] article.note-content h3 { font-size: 1.1rem; color: var(--accent); }
+html[data-export-theme="engineering"] article.note-content table { font-size: 0.9rem; border: 2px solid var(--accent); }
+html[data-export-theme="engineering"] article.note-content th { background: var(--accent); color: #fff; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+html[data-export-theme="engineering"] article.note-content tr:nth-child(even) { background: rgba(37,99,235,0.06); }
+html[data-export-theme="engineering"] article.note-content tr:hover { background: rgba(37,99,235,0.12); }
+html[data-export-theme="engineering"] article.note-content blockquote { border-left-color: var(--accent); background: rgba(37,99,235,0.06); padding: 12px 16px; border-radius: 0 8px 8px 0; }
+html[data-export-theme="engineering"] article.note-content code { background: rgba(37,99,235,0.1); }
 @media print { @page { size: A4 landscape; margin: 15mm; } }
 `;
 }
@@ -293,17 +320,15 @@ article.note-content code { background: #e8efff; color: #1e3a5f; }
 /** 销售报表主题 */
 function getSalesCSS(): string {
 	return `
-:root { --accent: #059669; }
-body { background: #f8fafb; }
-article.note-content h1 { text-align: center; font-size: 1.8rem; color: #064e3b; border-bottom: 3px solid #059669; padding-bottom: 0.5em; }
-article.note-content h2 { font-size: 1.3rem; color: #064e3b; background: linear-gradient(90deg, #ecfdf5, transparent); padding: 8px 12px; border-left: 4px solid #059669; }
-article.note-content h3 { color: #059669; }
-article.note-content table { font-size: 0.9rem; border: 1px solid #d1fae5; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-article.note-content th { background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-weight: 600; }
-article.note-content td { padding: 10px 14px; }
-article.note-content tr:nth-child(even) { background: #f0fdf4; }
-article.note-content tr:hover { background: #dcfce7; }
-article.note-content blockquote { border-left-color: #059669; background: #ecfdf5; padding: 12px 16px; border-radius: 0 8px 8px 0; }
+html[data-export-theme="sales"] article.note-content h1 { text-align: center; font-size: 1.8rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.5em; }
+html[data-export-theme="sales"] article.note-content h2 { font-size: 1.3rem; padding: 8px 12px; border-left: 4px solid var(--accent); }
+html[data-export-theme="sales"] article.note-content h3 { color: var(--accent); }
+html[data-export-theme="sales"] article.note-content table { font-size: 0.9rem; border: 1px solid rgba(5,150,105,0.2); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+html[data-export-theme="sales"] article.note-content th { background: linear-gradient(135deg, var(--accent), rgba(16,185,129,0.9)); color: #fff; font-weight: 600; }
+html[data-export-theme="sales"] article.note-content td { padding: 10px 14px; }
+html[data-export-theme="sales"] article.note-content tr:nth-child(even) { background: rgba(5,150,105,0.05); }
+html[data-export-theme="sales"] article.note-content tr:hover { background: rgba(5,150,105,0.1); }
+html[data-export-theme="sales"] article.note-content blockquote { border-left-color: var(--accent); background: rgba(5,150,105,0.06); padding: 12px 16px; border-radius: 0 8px 8px 0; }
 @media print { @page { size: A4; margin: 15mm; } }
 `;
 }
@@ -584,7 +609,12 @@ function oeImportExcel(file) {
 			workbook.SheetNames.forEach(function(name) {
 				var html = XLSX.utils.sheet_to_html(workbook.Sheets[name]);
 				var div = document.createElement('div');
-				div.innerHTML = '<h3>' + name + '</h3>' + html;
+				var h3 = document.createElement('h3');
+				h3.textContent = name;
+				div.appendChild(h3);
+				var tmp = document.createElement('div');
+				tmp.innerHTML = html;
+				div.appendChild(tmp.firstChild);
 				content.appendChild(div);
 			});
 			alert('${lang === "zh" ? "Excel 导入成功" : "Excel imported"}');
@@ -657,9 +687,11 @@ function oeUpdateTaskProgress() {
 		if (!items.length) return;
 		var total = items.length;
 		var checked = ul.querySelectorAll('.task-list-item input:checked').length;
-		var bar = ul.nextElementSibling;
-		if (!bar || !bar.classList.contains('oe-task-progress')) {
+		var barId = 'oe-progress-' + Array.prototype.indexOf.call(ul.parentNode.children, ul);
+		var bar = document.getElementById(barId);
+		if (!bar) {
 			bar = document.createElement('div');
+			bar.id = barId;
 			bar.className = 'oe-task-progress';
 			bar.innerHTML = '<div class="oe-task-progress-bar"></div>';
 			ul.parentNode.insertBefore(bar, ul.nextSibling);
@@ -679,7 +711,9 @@ function oeToggleTheme() {
 }
 function oeSwitchTheme(theme) {
 	document.documentElement.setAttribute('data-export-theme', theme);
-	location.reload();
+	document.documentElement.className = 'oe-theme-' + theme;
+	var sel = document.getElementById('oe-theme-select');
+	if (sel) sel.value = theme;
 }
 
 // === 工具函数 ===
@@ -717,7 +751,7 @@ function getHighlightCDN(): string {
 <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/languages/css.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/languages/xml.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/languages/bash.min.js"></script>
-<script>hljs.highlightAll();</script>`;
+<script>document.addEventListener('DOMContentLoaded', function() { hljs.highlightAll(); });</script>`;
 }
 
 /* ========== 工具函数 ========== */

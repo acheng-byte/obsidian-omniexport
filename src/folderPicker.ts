@@ -51,7 +51,9 @@ export class FolderPickerModal extends SuggestModal<FolderChoice> {
 		}
 
 		for (const folder of folders) {
-			const path = folder.path === "/" ? "" : folder.path;
+			// 跳过根目录（已在上方显式添加）
+			if (folder.path === "/") continue;
+			const path = folder.path;
 			const name = folder.name;
 
 			// 模糊匹配：路径或文件夹名包含查询

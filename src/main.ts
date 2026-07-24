@@ -59,7 +59,7 @@ export default class OmniExportPlugin extends Plugin {
 		if (ext === "md") return "markdown";
 		if (["txt", "text", "log", "csv", "json", "yaml", "yml"].includes(ext)) return "text";
 		if (["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico"].includes(ext)) return "image";
-		if (["mp4", "webm", "ogg", "mov", "avi", "mkv"].includes(ext)) return "video";
+		if (["mp4", "webm", "mov", "avi", "mkv"].includes(ext)) return "video";
 		if (["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma"].includes(ext)) return "audio";
 		return "other";
 	}
@@ -183,7 +183,6 @@ export default class OmniExportPlugin extends Plugin {
 	async exportVault() {
 		this.logger.clear();
 		this.logger.info(t("exportBatch", this.settings.lang));
-		new Notice(t("exporting", this.settings.lang));
 
 		const allFiles = this.app.vault.getFiles();
 		// 过滤可导出的文件
@@ -196,6 +195,8 @@ export default class OmniExportPlugin extends Plugin {
 		let count = 0;
 		let failCount = 0;
 		let skipCount = 0;
+		const total = exportable.length;
+		const progressNotice = new Notice(`${t("exporting", this.settings.lang)} 0/${total}`, 0);
 
 		for (const file of exportable) {
 			try {
@@ -215,8 +216,13 @@ export default class OmniExportPlugin extends Plugin {
 				const msg = e instanceof Error ? e.message : String(e);
 				this.logger.error(`Failed: ${file.path} - ${msg}`);
 			}
+			// 每 10 个文件更新一次进度
+			if ((count + failCount) % 10 === 0 || count + failCount === total) {
+				(progressNotice as any).setMessage(`${t("exporting", this.settings.lang)} ${count + failCount}/${total}`);
+			}
 		}
 
+		(progressNotice as any).hide();
 		skipCount = allFiles.length - exportable.length;
 		const summary = `${t("exportComplete", this.settings.lang, { count })}${failCount > 0 ? `, ${failCount} failed` : ""}${skipCount > 0 ? `, ${skipCount} skipped` : ""}`;
 		this.logger.success(summary);
@@ -420,5 +426,5 @@ function formatLogHTML(text: string, logger: Logger): string {
 }
 
 function escapeHtml(str: string): string {
-	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
