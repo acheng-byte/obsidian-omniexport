@@ -6,7 +6,7 @@
 import type { OmniExportSettings } from "./settings";
 import { t, type Lang } from "./i18n";
 
-export const PLUGIN_VERSION = "0.1.2";
+export const PLUGIN_VERSION = "0.1.3";
 
 export type Theme = "default" | "gongwen" | "report" | "presentation" | "engineering" | "sales";
 

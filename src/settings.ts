@@ -22,11 +22,11 @@ export const DEFAULT_SETTINGS: OmniExportSettings = {
 	theme: "auto",
 	exportTheme: "default",
 	embedAssets: true,
-	interactive: true,
-	renderMermaid: true,
-	renderMath: true,
-	codeHighlight: true,
-	seo: true,
+	interactive: false,
+	renderMermaid: false,
+	renderMath: false,
+	codeHighlight: false,
+	seo: false,
 	outputPath: "",
 	autoUpdate: true,
 };
@@ -182,6 +182,37 @@ export class OmniExportSettingTab extends PluginSettingTab {
 					this.plugin.settings.autoUpdate = value;
 					await this.plugin.saveSettings();
 				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsCheckUpdate", lang))
+			.setDesc(`${t("settingsCurrentVersion", lang)}: ${this.plugin.manifest.version}`)
+			.addButton((btn) =>
+				btn
+					.setButtonText(t("settingsCheckUpdateBtn", lang))
+					.onClick(async () => {
+						btn.setDisabled(true);
+						btn.setButtonText(t("updateCheck", lang));
+						try {
+							const { checkUpdate } = await import("./updater");
+							const result = await checkUpdate(this.plugin.manifest.version);
+							if (result.hasUpdate) {
+								btn.setButtonText(`${t("updateAvailable", lang, { version: result.latestVersion })}`);
+								window.open(result.releaseUrl, "_blank");
+								new Notice(t("updateAvailable", lang, { version: result.latestVersion }));
+							} else {
+								btn.setButtonText(t("updateLatest", lang));
+								new Notice(t("updateLatest", lang));
+							}
+						} catch {
+							btn.setButtonText(t("updateFail", lang));
+							new Notice(t("updateFail", lang));
+						}
+						setTimeout(() => {
+							btn.setDisabled(false);
+							btn.setButtonText(t("settingsCheckUpdateBtn", lang));
+						}, 3000);
+					})
 			);
 	}
 }
