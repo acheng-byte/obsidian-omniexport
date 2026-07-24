@@ -6,7 +6,7 @@ import { FolderPickerModal } from "./folderPicker";
 export interface OmniExportSettings {
 	lang: Lang;
 	theme: "light" | "dark" | "auto";
-	exportTheme: "default" | "gongwen" | "report" | "presentation";
+	exportTheme: "default" | "gongwen" | "report" | "presentation" | "engineering" | "sales";
 	embedAssets: boolean;
 	interactive: boolean;
 	renderMermaid: boolean;
@@ -83,9 +83,11 @@ export class OmniExportSettingTab extends PluginSettingTab {
 					.addOption("gongwen", t("themeGongwen", lang))
 					.addOption("report", t("themeReport", lang))
 					.addOption("presentation", t("themePresentation", lang))
+					.addOption("engineering", t("themeEngineering", lang))
+					.addOption("sales", t("themeSales", lang))
 					.setValue(this.plugin.settings.exportTheme)
 					.onChange(async (value) => {
-						this.plugin.settings.exportTheme = value as "default" | "gongwen" | "report" | "presentation";
+						this.plugin.settings.exportTheme = value as "default" | "gongwen" | "report" | "presentation" | "engineering" | "sales";
 						await this.plugin.saveSettings();
 					})
 			);

@@ -6,9 +6,9 @@
 import type { OmniExportSettings } from "./settings";
 import { t, type Lang } from "./i18n";
 
-export const PLUGIN_VERSION = "0.0.3";
+export const PLUGIN_VERSION = "0.1.1";
 
-export type Theme = "default" | "gongwen" | "report" | "presentation";
+export type Theme = "default" | "gongwen" | "report" | "presentation" | "engineering" | "sales";
 
 interface ExportOptions {
 	title: string;
@@ -25,7 +25,7 @@ interface ExportOptions {
  */
 export function generateSingleFileHTML(options: ExportOptions): string {
 	const { title, content, settings, lang, createDate, modifyDate, tags } = options;
-	const isDark = settings.theme === "dark" || (settings.theme === "auto" && false);
+	const isDark = settings.theme === "dark" || (settings.theme === "auto" && typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches);
 	const theme = (settings.exportTheme as Theme) || "default";
 
 	const seoTags = settings.seo ? generateSEOTags(title, options) : "";
@@ -54,6 +54,8 @@ ${interactiveCSS}
 ${highlightJS}
 ${mathJS}
 ${mermaidJS}
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 </head>
 <body>
 ${settings.interactive ? getToolbarHTML(lang, theme) : ""}
@@ -168,14 +170,12 @@ article.note-content .task-list-item input { margin-right: 8px; }
 
 function getThemeCSS(theme: Theme, isDark: boolean): string {
 	switch (theme) {
-		case "gongwen":
-			return getGongwenCSS();
-		case "report":
-			return getReportCSS();
-		case "presentation":
-			return getPresentationCSS();
-		default:
-			return "";
+		case "gongwen": return getGongwenCSS();
+		case "report": return getReportCSS();
+		case "presentation": return getPresentationCSS();
+		case "engineering": return getEngineeringCSS();
+		case "sales": return getSalesCSS();
+		default: return "";
 	}
 }
 
@@ -273,6 +273,41 @@ article.note-content th { background: var(--accent); color: #fff; }
 `;
 }
 
+/** 工程报表主题 */
+function getEngineeringCSS(): string {
+	return `
+:root { --accent: #2563eb; }
+article.note-content h1 { text-align: center; font-size: 1.6rem; border-bottom: 3px solid #2563eb; padding-bottom: 0.5em; color: #1e3a5f; }
+article.note-content h2 { font-size: 1.3rem; color: #1e3a5f; border-left: 5px solid #2563eb; padding-left: 12px; }
+article.note-content h3 { font-size: 1.1rem; color: #2563eb; }
+article.note-content table { font-size: 0.9rem; border: 2px solid #2563eb; }
+article.note-content th { background: #2563eb; color: #fff; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; }
+article.note-content tr:nth-child(even) { background: #f0f4ff; }
+article.note-content tr:hover { background: #e0e8ff; }
+article.note-content blockquote { border-left-color: #2563eb; background: #f0f4ff; padding: 12px 16px; border-radius: 0 8px 8px 0; }
+article.note-content code { background: #e8efff; color: #1e3a5f; }
+@media print { @page { size: A4 landscape; margin: 15mm; } }
+`;
+}
+
+/** 销售报表主题 */
+function getSalesCSS(): string {
+	return `
+:root { --accent: #059669; }
+body { background: #f8fafb; }
+article.note-content h1 { text-align: center; font-size: 1.8rem; color: #064e3b; border-bottom: 3px solid #059669; padding-bottom: 0.5em; }
+article.note-content h2 { font-size: 1.3rem; color: #064e3b; background: linear-gradient(90deg, #ecfdf5, transparent); padding: 8px 12px; border-left: 4px solid #059669; }
+article.note-content h3 { color: #059669; }
+article.note-content table { font-size: 0.9rem; border: 1px solid #d1fae5; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+article.note-content th { background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-weight: 600; }
+article.note-content td { padding: 10px 14px; }
+article.note-content tr:nth-child(even) { background: #f0fdf4; }
+article.note-content tr:hover { background: #dcfce7; }
+article.note-content blockquote { border-left-color: #059669; background: #ecfdf5; padding: 12px 16px; border-radius: 0 8px 8px 0; }
+@media print { @page { size: A4; margin: 15mm; } }
+`;
+}
+
 /* ========== 交互式 CSS ========== */
 
 function getInteractiveCSS(isDark: boolean): string {
@@ -363,25 +398,32 @@ mark.search-highlight { background: #fbbf24; color: #000; border-radius: 2px; pa
 
 function getToolbarHTML(lang: Lang, theme: Theme): string {
 	const labels = lang === "zh"
-		? { search: "搜索...", toc: "目录", exportCSV: "导出CSV", importCSV: "导入CSV", theme: "主题" }
-		: { search: "Search...", toc: "TOC", exportCSV: "CSV", importCSV: "Import", theme: "Theme" };
+		? { search: "搜索...", toc: "目录", exportCSV: "导出CSV", importFile: "导入文件", importHint: "支持 Excel/Word/CSV" }
+		: { search: "Search...", toc: "TOC", exportCSV: "CSV", importFile: "Import", importHint: "Excel/Word/CSV" };
+
+	const themeOptions = [
+		{ value: "default", label: "Default" },
+		{ value: "gongwen", label: "公文" },
+		{ value: "report", label: "Report" },
+		{ value: "presentation", label: "Slide" },
+		{ value: "engineering", label: lang === "zh" ? "工程" : "Eng" },
+		{ value: "sales", label: lang === "zh" ? "销售" : "Sales" },
+	];
+	const optionsHTML = themeOptions.map(o =>
+		`<option value="${o.value}"${theme === o.value ? " selected" : ""}>${o.label}</option>`
+	).join("");
 
 	return `
 <div class="oe-toolbar">
 	<input type="text" id="oe-search" placeholder="${labels.search}" oninput="oeSearch(this.value)">
 	<button class="oe-btn" onclick="document.querySelector('.toc-nav').classList.toggle('open')">${labels.toc}</button>
 	<button class="oe-btn" onclick="oeExportCSV()">${labels.exportCSV}</button>
-	<button class="oe-btn" onclick="oeImportCSV()">${labels.importCSV}</button>
-	<select class="oe-btn" onchange="oeSwitchTheme(this.value)" id="oe-theme-select">
-		<option value="default"${theme === "default" ? " selected" : ""}>Default</option>
-		<option value="gongwen"${theme === "gongwen" ? " selected" : ""}>公文</option>
-		<option value="report"${theme === "report" ? " selected" : ""}>Report</option>
-		<option value="presentation"${theme === "presentation" ? " selected" : ""}>Slide</option>
-	</select>
+	<button class="oe-btn" onclick="document.getElementById('oe-file-input').click()" title="${labels.importHint}">${labels.importFile}</button>
+	<select class="oe-btn" onchange="oeSwitchTheme(this.value)" id="oe-theme-select">${optionsHTML}</select>
 </div>
 <nav class="toc-nav" id="toc-nav"><h3>${labels.toc}</h3><div id="toc-content"></div></nav>
 <button class="theme-toggle" onclick="oeToggleTheme()" aria-label="Theme">🌓</button>
-<input type="file" id="oe-csv-input" accept=".csv,.tsv,.json" style="display:none" onchange="oeHandleCSVImport(this)">`;
+<input type="file" id="oe-file-input" accept=".csv,.tsv,.json,.xlsx,.xls,.docx,.doc" style="display:none" onchange="oeHandleFileImport(this)">`;
 }
 
 /* ========== 交互式 JS ========== */
@@ -515,29 +557,79 @@ function oeExportCSV() {
 	oeDownload(allCSV.join('\\n'), 'all-tables.csv', 'text/csv');
 }
 
-// === 导入 CSV ===
-function oeImportCSV() {
-	document.getElementById('oe-csv-input').click();
-}
-function oeHandleCSVImport(input) {
+// === 统一文件导入（Excel/Word/CSV）===
+function oeHandleFileImport(input) {
 	var file = input.files[0];
 	if (!file) return;
+	var ext = file.name.split('.').pop().toLowerCase();
+
+	if (ext === 'xlsx' || ext === 'xls') {
+		oeImportExcel(file);
+	} else if (ext === 'docx') {
+		oeImportWord(file);
+	} else {
+		oeImportCSVFile(file);
+	}
+	input.value = '';
+}
+
+// === Excel 导入（SheetJS）===
+function oeImportExcel(file) {
+	var reader = new FileReader();
+	reader.onload = function(e) {
+		try {
+			var data = new Uint8Array(e.target.result);
+			var workbook = XLSX.read(data, { type: 'array' });
+			var content = document.getElementById('note-content');
+			workbook.SheetNames.forEach(function(name) {
+				var html = XLSX.utils.sheet_to_html(workbook.Sheets[name]);
+				var div = document.createElement('div');
+				div.innerHTML = '<h3>' + name + '</h3>' + html;
+				content.appendChild(div);
+			});
+			alert('${lang === "zh" ? "Excel 导入成功" : "Excel imported"}');
+		} catch(err) { alert('${lang === "zh" ? "Excel 解析失败" : "Excel parse failed"}: ' + err.message); }
+	};
+	reader.readAsArrayBuffer(file);
+}
+
+// === Word 导入（mammoth.js）===
+function oeImportWord(file) {
+	var reader = new FileReader();
+	reader.onload = function(e) {
+		try {
+			mammoth.convertToHtml({ arrayBuffer: e.target.result })
+				.then(function(result) {
+					var content = document.getElementById('note-content');
+					var div = document.createElement('div');
+					div.innerHTML = result.value;
+					content.appendChild(div);
+					if (result.messages.length) console.log('Word warnings:', result.messages);
+					alert('${lang === "zh" ? "Word 导入成功" : "Word imported"}');
+				})
+				.catch(function(err) { alert('${lang === "zh" ? "Word 解析失败" : "Word parse failed"}: ' + err); });
+		} catch(err) { alert('${lang === "zh" ? "Word 读取失败" : "Word read failed"}'); }
+	};
+	reader.readAsArrayBuffer(file);
+}
+
+// === CSV 导入 ===
+function oeImportCSVFile(file) {
 	var reader = new FileReader();
 	reader.onload = function(e) {
 		var text = e.target.result;
 		var tables = document.querySelectorAll('.note-content table');
+		var table;
 		if (!tables.length) {
-			// 没有表格则创建一个新的
-			var table = document.createElement('table');
+			table = document.createElement('table');
 			document.getElementById('note-content').appendChild(table);
-			tables = [table];
+		} else {
+			table = tables[0];
 		}
-		var table = tables[0];
 		var rows = text.split(/\\r?\\n/).filter(function(r) { return r.trim(); });
 		table.innerHTML = '';
 		rows.forEach(function(row, ri) {
 			var tr = document.createElement('tr');
-			// 简单 CSV 解析
 			var cells = row.match(/("([^"]|"")*"|[^,]*)/g) || [];
 			cells.forEach(function(cell) {
 				var td = document.createElement(ri === 0 ? 'th' : 'td');
@@ -547,8 +639,7 @@ function oeHandleCSVImport(input) {
 			});
 			table.appendChild(tr);
 		});
-		alert('${lang === "zh" ? "导入成功" : "Import successful"}');
-		input.value = '';
+		alert('${lang === "zh" ? "CSV 导入成功" : "CSV imported"}');
 	};
 	reader.readAsText(file);
 }
@@ -560,12 +651,14 @@ document.querySelectorAll('.note-content .task-list-item input[type="checkbox"]'
 });
 oeUpdateTaskProgress();
 function oeUpdateTaskProgress() {
-	var lists = document.querySelectorAll('.note-content ul:has(.task-list-item)');
-	lists.forEach(function(ul) {
-		var total = ul.querySelectorAll('.task-list-item input').length;
+	// 兼容方案：不依赖 :has()，遍历所有 ul 检查是否包含 task-list-item
+	document.querySelectorAll('.note-content ul').forEach(function(ul) {
+		var items = ul.querySelectorAll('.task-list-item input');
+		if (!items.length) return;
+		var total = items.length;
 		var checked = ul.querySelectorAll('.task-list-item input:checked').length;
-		var bar = ul.querySelector('.oe-task-progress');
-		if (!bar) {
+		var bar = ul.nextElementSibling;
+		if (!bar || !bar.classList.contains('oe-task-progress')) {
 			bar = document.createElement('div');
 			bar.className = 'oe-task-progress';
 			bar.innerHTML = '<div class="oe-task-progress-bar"></div>';

@@ -75,6 +75,8 @@ const strings: Record<Lang, Record<string, string>> = {
 		themeGongwen: "公文（GB/T 9704）",
 		themeReport: "报告",
 		themePresentation: "演示",
+		themeEngineering: "工程",
+		themeSales: "销售",
 		// 日志过滤
 		logFilterErrors: "仅错误",
 		logFilterAll: "全部",
@@ -141,6 +143,8 @@ const strings: Record<Lang, Record<string, string>> = {
 		themeGongwen: "Official (GB/T 9704)",
 		themeReport: "Report",
 		themePresentation: "Presentation",
+		themeEngineering: "Engineering",
+		themeSales: "Sales",
 		logFilterErrors: "Errors only",
 		logFilterAll: "All",
 		unsupportedFile: "Unsupported file type",

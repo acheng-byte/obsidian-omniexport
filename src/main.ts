@@ -1,15 +1,16 @@
-import { Plugin, Notice, TFile, TFolder, MarkdownRenderer, Component } from "obsidian";
+import { Plugin, Notice, TFile, MarkdownRenderer, Component } from "obsidian";
 import { OmniExportSettingTab, DEFAULT_SETTINGS, type OmniExportSettings } from "./settings";
 import { generateSingleFileHTML, PLUGIN_VERSION } from "./exporter";
 import { t } from "./i18n";
 import { checkUpdate, installUpdate } from "./updater";
 import { Logger } from "./logger";
+import { embedAssets, arrayBufferToBase64, getMimeType } from "./assetEmbedder";
 
 /** 非法文件名字符（Windows + macOS + Obsidian 限制） */
 const ILLEGAL_CHARS = /[\\/:*?"<>|\x00-\x1f]/g;
 
 /** 可导出的文件类型 */
-type FileCategory = "markdown" | "text" | "image" | "audio" | "other";
+type FileCategory = "markdown" | "text" | "image" | "video" | "audio" | "other";
 
 export default class OmniExportPlugin extends Plugin {
 	settings: OmniExportSettings;
@@ -58,6 +59,7 @@ export default class OmniExportPlugin extends Plugin {
 		if (ext === "md") return "markdown";
 		if (["txt", "text", "log", "csv", "json", "yaml", "yml"].includes(ext)) return "text";
 		if (["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico"].includes(ext)) return "image";
+		if (["mp4", "webm", "ogg", "mov", "avi", "mkv"].includes(ext)) return "video";
 		if (["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma"].includes(ext)) return "audio";
 		return "other";
 	}
@@ -81,20 +83,49 @@ export default class OmniExportPlugin extends Plugin {
 				return `<pre style="white-space:pre-wrap;word-wrap:break-word;font-family:var(--font);">${escaped}</pre>`;
 			}
 			case "image": {
-				// 图片：生成 img 标签，使用 Obsidian 内部链接
-				const url = this.app.vault.getResourcePath(file);
-				return `<figure>
-<img src="${url}" alt="${file.name}" style="max-width:100%;height:auto;">
+				// 图片：读取二进制转 base64 data URI（独立 HTML 可用）
+				try {
+					const data = await this.app.vault.readBinary(file);
+					const base64 = arrayBufferToBase64(data);
+					const mime = getMimeType(file.extension);
+					const dataUri = `data:${mime};base64,${base64}`;
+					return `<figure>
+<img src="${dataUri}" alt="${file.name}" style="max-width:100%;height:auto;">
 <figcaption>${file.name}</figcaption>
 </figure>`;
+				} catch {
+					return `<figure><p>[${t("unsupportedFile", this.settings.lang)}: ${file.name}]</p></figure>`;
+				}
+			}
+			case "video": {
+				// 视频：读取二进制转 base64 data URI
+				try {
+					const data = await this.app.vault.readBinary(file);
+					const base64 = arrayBufferToBase64(data);
+					const mime = getMimeType(file.extension);
+					const dataUri = `data:${mime};base64,${base64}`;
+					return `<figure>
+<video controls src="${dataUri}" style="max-width:100%;height:auto;">Your browser does not support video.</video>
+<figcaption>${file.name}</figcaption>
+</figure>`;
+				} catch {
+					return `<figure><p>[${t("unsupportedFile", this.settings.lang)}: ${file.name}]</p></figure>`;
+				}
 			}
 			case "audio": {
-				// 音频：生成 audio 播放器
-				const url = this.app.vault.getResourcePath(file);
-				return `<div class="audio-player">
+				// 音频：读取二进制转 base64 data URI
+				try {
+					const data = await this.app.vault.readBinary(file);
+					const base64 = arrayBufferToBase64(data);
+					const mime = getMimeType(file.extension);
+					const dataUri = `data:${mime};base64,${base64}`;
+					return `<div class="audio-player">
 <p>🎵 ${file.name}</p>
-<audio controls src="${url}" style="width:100%;">Your browser does not support audio.</audio>
+<audio controls src="${dataUri}" style="width:100%;">Your browser does not support audio.</audio>
 </div>`;
+				} catch {
+					return `<p>[${t("unsupportedFile", this.settings.lang)}: ${file.name}]</p>`;
+				}
 			}
 			default:
 				return `<p style="color:var(--text-secondary);">[${t("unsupportedFile", this.settings.lang)}: ${file.name}]</p>`;
@@ -203,6 +234,13 @@ export default class OmniExportPlugin extends Plugin {
 				file.path,
 				new Component()
 			);
+
+			// 内嵌资源：将图片/视频/音频转为 base64 data URI
+			if (this.settings.embedAssets) {
+				await embedAssets(container, this.app.vault, this.app.metadataCache, file.path);
+				this.logger.info("Assets embedded as base64");
+			}
+
 			return container.innerHTML;
 		} finally {
 			container.remove();
