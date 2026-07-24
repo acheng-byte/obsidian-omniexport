@@ -1,0 +1,42 @@
+name: Build Plugin
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload main.js
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian-omniexport
+          path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Commit built files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add main.js manifest.json styles.css
+          git diff --cached --quiet || git commit -m "build: auto-compile [skip ci]"
+          git push
