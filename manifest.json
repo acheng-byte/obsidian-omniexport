@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-omniexport",
 	"name": "OmniExport",
-	"version": "1.0.0",
+	"version": "0.0.1",
 	"minAppVersion": "1.0.0",
 	"description": "Universal HTML export - self-contained single file, interactive, mobile-first, multi-platform publishing",
 	"description_zh": "万能HTML导出 - 自包含单文件、交互式、手机端优先、多平台发布",

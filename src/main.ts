@@ -2,7 +2,7 @@ import { Plugin, Notice, TFile, TFolder, TAbstractFile } from "obsidian";
 import { OmniExportSettingTab, DEFAULT_SETTINGS, type OmniExportSettings } from "./settings";
 import { generateSingleFileHTML } from "./exporter";
 import { t } from "./i18n";
-import { checkUpdate } from "./updater";
+import { checkUpdate, installUpdate } from "./updater";
 
 export default class OmniExportPlugin extends Plugin {
 	settings: OmniExportSettings;
@@ -21,6 +21,12 @@ export default class OmniExportPlugin extends Plugin {
 			id: "export-vault",
 			name: t("cmdExportVault", this.settings.lang),
 			callback: () => this.exportVault(),
+		});
+
+		this.addCommand({
+			id: "check-update",
+			name: t("cmdCheckUpdate", this.settings.lang),
+			callback: () => this.manualCheckUpdate(),
 		});
 
 		// 注册设置面板
@@ -131,6 +137,21 @@ export default class OmniExportPlugin extends Plugin {
 			}
 		} catch (e) {
 			// 静默失败
+		}
+	}
+
+	private async manualCheckUpdate() {
+		new Notice(t("updateCheck", this.settings.lang));
+		try {
+			const result = await checkUpdate(this.manifest.version);
+			if (result.hasUpdate) {
+				new Notice(t("updateAvailable", this.settings.lang, { version: result.latestVersion }));
+				await installUpdate(result, this.manifest.dir, this.settings.lang);
+			} else {
+				new Notice(t("updateLatest", this.settings.lang));
+			}
+		} catch (e) {
+			new Notice(t("updateFail", this.settings.lang));
 		}
 	}
 
