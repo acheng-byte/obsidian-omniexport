@@ -1,0 +1,21 @@
+/* OmniExport 插件样式 - 手机端优先 */
+
+.omniexport-settings {
+	padding: 16px;
+}
+
+.omniexport-settings h2 {
+	font-size: 1.4rem;
+	margin-bottom: 16px;
+}
+
+.omniexport-export-modal {
+	max-width: 90vw;
+	width: 400px;
+}
+
+@media (max-width: 767px) {
+	.omniexport-export-modal {
+		width: 95vw;
+	}
+}

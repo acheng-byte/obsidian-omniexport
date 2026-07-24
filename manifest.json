@@ -1,0 +1,12 @@
+{
+	"id": "obsidian-omniexport",
+	"name": "OmniExport",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
+	"description": "Universal HTML export - self-contained single file, interactive, mobile-first, multi-platform publishing",
+	"description_zh": "万能HTML导出 - 自包含单文件、交互式、手机端优先、多平台发布",
+	"author": "Acheng - One City of Universe",
+	"author_zh": "阿成-天地乾坤一座城",
+	"authorUrl": "https://github.com/acheng-byte",
+	"isDesktopOnly": false
+}

@@ -1,0 +1,153 @@
+import { App, PluginSettingTab, Setting } from "obsidian";
+import type OmniExportPlugin from "./main";
+import { t, type Lang } from "./i18n";
+
+export interface OmniExportSettings {
+	lang: Lang;
+	theme: "light" | "dark" | "auto";
+	embedAssets: boolean;
+	interactive: boolean;
+	renderMermaid: boolean;
+	renderMath: boolean;
+	codeHighlight: boolean;
+	seo: boolean;
+	outputPath: string;
+	autoUpdate: boolean;
+}
+
+export const DEFAULT_SETTINGS: OmniExportSettings = {
+	lang: "zh",
+	theme: "auto",
+	embedAssets: true,
+	interactive: true,
+	renderMermaid: true,
+	renderMath: true,
+	codeHighlight: true,
+	seo: true,
+	outputPath: "",
+	autoUpdate: true,
+};
+
+export class OmniExportSettingTab extends PluginSettingTab {
+	plugin: OmniExportPlugin;
+
+	constructor(app: App, plugin: OmniExportPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+	}
+
+	display(): void {
+		const { containerEl } = this;
+		containerEl.empty();
+		const lang = this.plugin.settings.lang;
+
+		containerEl.createEl("h2", { text: t("settingsTitle", lang) });
+
+		new Setting(containerEl)
+			.setName(t("settingsLanguage", lang))
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption("zh", "中文")
+					.addOption("en", "English")
+					.setValue(lang)
+					.onChange(async (value) => {
+						this.plugin.settings.lang = value as Lang;
+						await this.plugin.saveSettings();
+						this.display();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsTheme", lang))
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption("light", t("settingsThemeLight", lang))
+					.addOption("dark", t("settingsThemeDark", lang))
+					.addOption("auto", t("settingsThemeAuto", lang))
+					.setValue(this.plugin.settings.theme)
+					.onChange(async (value) => {
+						this.plugin.settings.theme = value as "light" | "dark" | "auto";
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsEmbedAssets", lang))
+			.setDesc(t("settingsEmbedDesc", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.embedAssets).onChange(async (value) => {
+					this.plugin.settings.embedAssets = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsInteractive", lang))
+			.setDesc(t("settingsInteractiveDesc", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.interactive).onChange(async (value) => {
+					this.plugin.settings.interactive = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsMermaid", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.renderMermaid).onChange(async (value) => {
+					this.plugin.settings.renderMermaid = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsMath", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.renderMath).onChange(async (value) => {
+					this.plugin.settings.renderMath = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsCodeHighlight", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.codeHighlight).onChange(async (value) => {
+					this.plugin.settings.codeHighlight = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsSEO", lang))
+			.setDesc(t("settingsSEODesc", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.seo).onChange(async (value) => {
+					this.plugin.settings.seo = value;
+					await this.plugin.saveSettings();
+				})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsOutputPath", lang))
+			.setDesc(t("settingsOutputDesc", lang))
+			.addText((text) =>
+				text
+					.setPlaceholder("e.g. exports/html")
+					.setValue(this.plugin.settings.outputPath)
+					.onChange(async (value) => {
+						this.plugin.settings.outputPath = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName(t("settingsAutoUpdate", lang))
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.autoUpdate).onChange(async (value) => {
+					this.plugin.settings.autoUpdate = value;
+					await this.plugin.saveSettings();
+				})
+			);
+	}
+}
