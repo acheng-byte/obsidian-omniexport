@@ -113,6 +113,12 @@
 	background: var(--interactive-hover);
 }
 
+.omniexport-log-btn.active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
 @media (max-width: 767px) {
 	.omniexport-log-content {
 		width: 95vw;

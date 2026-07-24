@@ -1,9 +1,15 @@
-import { Plugin, Notice, TFile, MarkdownRenderer, Component } from "obsidian";
+import { Plugin, Notice, TFile, TFolder, MarkdownRenderer, Component } from "obsidian";
 import { OmniExportSettingTab, DEFAULT_SETTINGS, type OmniExportSettings } from "./settings";
-import { generateSingleFileHTML } from "./exporter";
+import { generateSingleFileHTML, PLUGIN_VERSION } from "./exporter";
 import { t } from "./i18n";
 import { checkUpdate, installUpdate } from "./updater";
 import { Logger } from "./logger";
+
+/** 非法文件名字符（Windows + macOS + Obsidian 限制） */
+const ILLEGAL_CHARS = /[\\/:*?"<>|\x00-\x1f]/g;
+
+/** 可导出的文件类型 */
+type FileCategory = "markdown" | "text" | "image" | "audio" | "other";
 
 export default class OmniExportPlugin extends Plugin {
 	settings: OmniExportSettings;
@@ -12,9 +18,8 @@ export default class OmniExportPlugin extends Plugin {
 	async onload() {
 		await this.loadSettings();
 		this.logger = new Logger(this.settings.lang);
-		this.logger.info("Plugin loaded");
+		this.logger.info(`Plugin loaded v${PLUGIN_VERSION}`);
 
-		// 注册命令
 		this.addCommand({
 			id: "export-current-note",
 			name: t("cmdExportCurrent", this.settings.lang),
@@ -39,14 +44,64 @@ export default class OmniExportPlugin extends Plugin {
 			callback: () => this.showLogModal(),
 		});
 
-		// 注册设置面板
 		this.addSettingTab(new OmniExportSettingTab(this.app, this));
 
-		// 自动检测更新
 		if (this.settings.autoUpdate) {
 			this.checkForUpdate();
 		}
 	}
+
+	/* ========== 文件类型识别 ========== */
+
+	private categorizeFile(file: TFile): FileCategory {
+		const ext = file.extension.toLowerCase();
+		if (ext === "md") return "markdown";
+		if (["txt", "text", "log", "csv", "json", "yaml", "yml"].includes(ext)) return "text";
+		if (["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "ico"].includes(ext)) return "image";
+		if (["mp3", "wav", "ogg", "flac", "aac", "m4a", "wma"].includes(ext)) return "audio";
+		return "other";
+	}
+
+	/** 根据文件类型生成 HTML 内容 */
+	private async renderFileContent(file: TFile): Promise<string> {
+		const category = this.categorizeFile(file);
+
+		switch (category) {
+			case "markdown": {
+				const content = await this.app.vault.read(file);
+				return await this.renderMarkdown(content, file);
+			}
+			case "text": {
+				const content = await this.app.vault.read(file);
+				// TXT 文件：保留换行，转义 HTML
+				const escaped = content
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;");
+				return `<pre style="white-space:pre-wrap;word-wrap:break-word;font-family:var(--font);">${escaped}</pre>`;
+			}
+			case "image": {
+				// 图片：生成 img 标签，使用 Obsidian 内部链接
+				const url = this.app.vault.getResourcePath(file);
+				return `<figure>
+<img src="${url}" alt="${file.name}" style="max-width:100%;height:auto;">
+<figcaption>${file.name}</figcaption>
+</figure>`;
+			}
+			case "audio": {
+				// 音频：生成 audio 播放器
+				const url = this.app.vault.getResourcePath(file);
+				return `<div class="audio-player">
+<p>🎵 ${file.name}</p>
+<audio controls src="${url}" style="width:100%;">Your browser does not support audio.</audio>
+</div>`;
+			}
+			default:
+				return `<p style="color:var(--text-secondary);">[${t("unsupportedFile", this.settings.lang)}: ${file.name}]</p>`;
+		}
+	}
+
+	/* ========== 导出单文件 ========== */
 
 	async exportCurrentNote() {
 		this.logger.clear();
@@ -60,15 +115,13 @@ export default class OmniExportPlugin extends Plugin {
 			return;
 		}
 
-		this.logger.info(`${t("exporting", this.settings.lang)} ${file.path}`);
+		const category = this.categorizeFile(file);
+		this.logger.info(`${t("exporting", this.settings.lang)} ${file.path} [${category}]`);
 		new Notice(t("exporting", this.settings.lang));
 
 		try {
-			const content = await this.app.vault.read(file);
-			this.logger.info(`Read ${content.length} chars`);
-
-			const rendered = await this.renderMarkdown(content, file);
-			this.logger.info("Markdown rendered");
+			const rendered = await this.renderFileContent(file);
+			this.logger.info(`File rendered (${category})`);
 
 			const html = generateSingleFileHTML({
 				title: file.basename,
@@ -94,20 +147,28 @@ export default class OmniExportPlugin extends Plugin {
 		}
 	}
 
+	/* ========== 批量导出 ========== */
+
 	async exportVault() {
 		this.logger.clear();
 		this.logger.info(t("exportBatch", this.settings.lang));
 		new Notice(t("exporting", this.settings.lang));
 
-		const files = this.app.vault.getMarkdownFiles();
-		this.logger.info(`Found ${files.length} markdown files`);
+		const allFiles = this.app.vault.getFiles();
+		// 过滤可导出的文件
+		const exportable = allFiles.filter(f => {
+			const cat = this.categorizeFile(f);
+			return cat !== "other";
+		});
+
+		this.logger.info(`Found ${exportable.length} exportable files (${allFiles.length} total)`);
 		let count = 0;
 		let failCount = 0;
+		let skipCount = 0;
 
-		for (const file of files) {
+		for (const file of exportable) {
 			try {
-				const content = await this.app.vault.read(file);
-				const rendered = await this.renderMarkdown(content, file);
+				const rendered = await this.renderFileContent(file);
 				const html = generateSingleFileHTML({
 					title: file.basename,
 					content: rendered,
@@ -125,13 +186,14 @@ export default class OmniExportPlugin extends Plugin {
 			}
 		}
 
-		this.logger.success(`${t("exportComplete", this.settings.lang, { count })}${failCount > 0 ? `, ${failCount} failed` : ""}`);
+		skipCount = allFiles.length - exportable.length;
+		const summary = `${t("exportComplete", this.settings.lang, { count })}${failCount > 0 ? `, ${failCount} failed` : ""}${skipCount > 0 ? `, ${skipCount} skipped` : ""}`;
+		this.logger.success(summary);
 		new Notice(t("exportComplete", this.settings.lang, { count }));
 	}
 
-	/**
-	 * 修复：使用 MarkdownRenderer.renderMarkdown 正确渲染
-	 */
+	/* ========== 渲染 Markdown ========== */
+
 	private async renderMarkdown(content: string, file: TFile): Promise<string> {
 		const container = document.createElement("div");
 		try {
@@ -147,21 +209,24 @@ export default class OmniExportPlugin extends Plugin {
 		}
 	}
 
-	/**
-	 * 修复：兼容 Windows 路径分隔符
-	 */
-	private getOutputPath(file: TFile): string {
-		if (this.settings.outputPath) {
-			return `${this.settings.outputPath}/${file.basename}.html`;
-		}
-		return file.path.replace(/\.md$/i, ".html");
+	/* ========== 路径处理 ========== */
+
+	/** 过滤非法文件名字符 */
+	private sanitizeFilename(name: string): string {
+		return name.replace(ILLEGAL_CHARS, "_").replace(/_+/g, "_").trim();
 	}
 
-	/**
-	 * 修复：兼容 Windows 路径，正确处理目录创建
-	 */
+	private getOutputPath(file: TFile): string {
+		const safeName = this.sanitizeFilename(file.basename);
+		if (this.settings.outputPath) {
+			return `${this.settings.outputPath}/${safeName}.html`;
+		}
+		// 替换原始扩展名为 .html
+		const dir = file.path.substring(0, file.path.lastIndexOf("/"));
+		return dir ? `${dir}/${safeName}.html` : `${safeName}.html`;
+	}
+
 	private async saveHTML(path: string, html: string): Promise<void> {
-		// 兼容 Windows 路径
 		const normalizedPath = path.replace(/\\/g, "/");
 		const lastSlash = normalizedPath.lastIndexOf("/");
 		const dir = lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : "";
@@ -182,22 +247,36 @@ export default class OmniExportPlugin extends Plugin {
 		}
 	}
 
-	/** 显示日志弹窗 */
+	/* ========== 日志弹窗（带过滤 + 红色错误） ========== */
+
 	private showLogModal() {
 		const { app, logger, settings } = this;
 		const lang = settings.lang;
 
 		const modal = document.createElement("div");
 		modal.className = "omniexport-log-modal";
+
+		const renderLogContent = (filter: "all" | "error") => {
+			const text = filter === "error" ? logger.getErrorText() : logger.getText();
+			return text || t("logEmpty", lang);
+		};
+
+		let currentFilter: "all" | "error" = "error"; // 默认只显示错误
+
 		modal.innerHTML = `
 			<div class="omniexport-log-overlay"></div>
 			<div class="omniexport-log-content">
 				<div class="omniexport-log-header">
 					<h3>${t("logTitle", lang)}</h3>
-					<button class="omniexport-log-close">&times;</button>
+					<div style="display:flex;gap:8px;align-items:center;">
+						<button class="omniexport-log-btn omniexport-log-filter" style="font-size:0.8rem;">
+							${t("logFilterErrors", lang)}
+						</button>
+						<button class="omniexport-log-close">&times;</button>
+					</div>
 				</div>
 				<div class="omniexport-log-body">
-					<pre class="omniexport-log-text">${logger.getText() || t("logEmpty", lang)}</pre>
+					<div class="omniexport-log-text">${formatLogHTML(renderLogContent(currentFilter), logger)}</div>
 				</div>
 				<div class="omniexport-log-actions">
 					<button class="omniexport-log-btn omniexport-log-copy">${t("logCopy", lang)}</button>
@@ -213,6 +292,18 @@ export default class OmniExportPlugin extends Plugin {
 		const close = () => modal.remove();
 		modal.querySelector(".omniexport-log-close")!.addEventListener("click", close);
 		modal.querySelector(".omniexport-log-overlay")!.addEventListener("click", close);
+
+		// 过滤切换
+		const filterBtn = modal.querySelector(".omniexport-log-filter")!;
+		const logTextEl = modal.querySelector(".omniexport-log-text")!;
+		filterBtn.addEventListener("click", () => {
+			currentFilter = currentFilter === "error" ? "all" : "error";
+			filterBtn.textContent = currentFilter === "error"
+				? t("logFilterErrors", lang)
+				: t("logFilterAll", lang);
+			filterBtn.classList.toggle("active", currentFilter === "all");
+			logTextEl.innerHTML = formatLogHTML(renderLogContent(currentFilter), logger);
+		});
 
 		// 复制
 		modal.querySelector(".omniexport-log-copy")!.addEventListener("click", async () => {
@@ -230,9 +321,11 @@ export default class OmniExportPlugin extends Plugin {
 		// 清空
 		modal.querySelector(".omniexport-log-clear")!.addEventListener("click", () => {
 			logger.clear();
-			modal.querySelector(".omniexport-log-text")!.textContent = t("logEmpty", lang);
+			logTextEl.innerHTML = t("logEmpty", lang);
 		});
 	}
+
+	/* ========== 更新检测 ========== */
 
 	private async checkForUpdate() {
 		try {
@@ -268,4 +361,26 @@ export default class OmniExportPlugin extends Plugin {
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
+}
+
+/** 格式化日志为 HTML（错误红色） */
+function formatLogHTML(text: string, logger: Logger): string {
+	if (!text) return "";
+	const lines = text.split("\n");
+	return lines.map(line => {
+		if (line.includes("[ERROR]") || line.includes("[错误]")) {
+			return `<span style="color:#ef4444;font-weight:600;">${escapeHtml(line)}</span>`;
+		}
+		if (line.includes("[WARN]") || line.includes("[警告]")) {
+			return `<span style="color:#f59e0b;">${escapeHtml(line)}</span>`;
+		}
+		if (line.includes("[OK]") || line.includes("[成功]")) {
+			return `<span style="color:#22c55e;">${escapeHtml(line)}</span>`;
+		}
+		return escapeHtml(line);
+	}).join("<br>");
+}
+
+function escapeHtml(str: string): string {
+	return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }

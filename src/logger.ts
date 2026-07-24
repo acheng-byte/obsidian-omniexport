@@ -64,6 +64,18 @@ export class Logger {
 		return lines.join("\n");
 	}
 
+	/** 只获取错误和警告日志 */
+	getErrorText(): string {
+		const levelLabels: Record<LogLevel, string> = this.lang === "zh"
+			? { info: "信息", warn: "警告", error: "错误", success: "成功" }
+			: { info: "INFO", warn: "WARN", error: "ERROR", success: "OK" };
+
+		const lines = this.entries
+			.filter(e => e.level === "error" || e.level === "warn")
+			.map(e => `[${e.time}] [${levelLabels[e.level]}] ${e.message}`);
+		return lines.join("\n");
+	}
+
 	/** 获取日志条数 */
 	get count(): number {
 		return this.entries.length;

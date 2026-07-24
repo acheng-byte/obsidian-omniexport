@@ -68,6 +68,18 @@ const strings: Record<Lang, Record<string, string>> = {
 		// 文件夹选择
 		chooseFolder: "选择文件夹",
 		outputPathPlaceholder: "留空则输出到笔记同目录",
+		// 导出主题
+		settingsExportTheme: "文档主题",
+		settingsExportThemeDesc: "选择导出 HTML 的排版风格",
+		themeDefault: "默认",
+		themeGongwen: "公文（GB/T 9704）",
+		themeReport: "报告",
+		themePresentation: "演示",
+		// 日志过滤
+		logFilterErrors: "仅错误",
+		logFilterAll: "全部",
+		// 文件类型
+		unsupportedFile: "不支持的文件类型",
 	},
 	en: {
 		pluginName: "OmniExport",
@@ -123,6 +135,15 @@ const strings: Record<Lang, Record<string, string>> = {
 		noActiveFile: "No active note",
 		chooseFolder: "Choose folder",
 		outputPathPlaceholder: "Empty = same directory as note",
+		settingsExportTheme: "Document Theme",
+		settingsExportThemeDesc: "Choose the layout style for exported HTML",
+		themeDefault: "Default",
+		themeGongwen: "Official (GB/T 9704)",
+		themeReport: "Report",
+		themePresentation: "Presentation",
+		logFilterErrors: "Errors only",
+		logFilterAll: "All",
+		unsupportedFile: "Unsupported file type",
 	},
 };
 
