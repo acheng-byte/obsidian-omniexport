@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type OmniExportPlugin from "./main";
 import { t, type Lang } from "./i18n";
+import { FolderPickerModal } from "./folderPicker";
 
 export interface OmniExportSettings {
 	lang: Lang;
@@ -133,11 +134,24 @@ export class OmniExportSettingTab extends PluginSettingTab {
 			.setDesc(t("settingsOutputDesc", lang))
 			.addText((text) =>
 				text
-					.setPlaceholder("e.g. exports/html")
+					.setPlaceholder(t("outputPathPlaceholder", lang))
 					.setValue(this.plugin.settings.outputPath)
 					.onChange(async (value) => {
 						this.plugin.settings.outputPath = value;
 						await this.plugin.saveSettings();
+					})
+			)
+			.addButton((btn) =>
+				btn
+					.setIcon("folder")
+					.setTooltip(t("chooseFolder", lang))
+					.onClick(() => {
+						const modal = new FolderPickerModal(this.app, async (path) => {
+							this.plugin.settings.outputPath = path;
+							await this.plugin.saveSettings();
+							this.display();
+						});
+						modal.open();
 					})
 			);
 

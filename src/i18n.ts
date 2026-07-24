@@ -65,6 +65,9 @@ const strings: Record<Lang, Record<string, string>> = {
 		logCopyFail: "复制失败，请手动复制",
 		logExported: "日志已导出",
 		noActiveFile: "没有打开的笔记",
+		// 文件夹选择
+		chooseFolder: "选择文件夹",
+		outputPathPlaceholder: "留空则输出到笔记同目录",
 	},
 	en: {
 		pluginName: "OmniExport",
@@ -118,6 +121,8 @@ const strings: Record<Lang, Record<string, string>> = {
 		logCopyFail: "Copy failed, please copy manually",
 		logExported: "Log exported",
 		noActiveFile: "No active note",
+		chooseFolder: "Choose folder",
+		outputPathPlaceholder: "Empty = same directory as note",
 	},
 };
 
